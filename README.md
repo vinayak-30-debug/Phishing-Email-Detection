@@ -203,23 +203,17 @@ Example Confusion Matrix
 
 ### Model Accuracy Comparison
 
-> Add image here
+## 📸 Results
 
-```
-screenshots/model_comparison.png
-```
+### Model Accuracy Comparison
+
+![Model Accuracy Comparison](screenshots/model_comparison.png)
 
 ---
 
 ### Confusion Matrix
 
-> Add image here
-
-```
-screenshots/confusion_matrix.png
-```
-
----
+![Confusion Matrix](screenshots/confusion_matrix.png)
 
 ## 📚 Concepts Used
 
@@ -278,8 +272,7 @@ Cybersecurity & Data Science Enthusiast
 GitHub:
 https://github.com/vinayak-30-debug
 
-LinkedIn:
-(Add your LinkedIn Profile)
+
 
 ---
 
