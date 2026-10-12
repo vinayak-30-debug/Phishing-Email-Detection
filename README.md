@@ -114,6 +114,21 @@ Columns:
 
 ---
 
+## 🌐 Web Interface
+
+A Streamlit web app is included for browser-based predictions.
+
+```bash
+streamlit run app.py
+```
+
+Features:
+- Paste any email text and get an instant Safe / Phishing verdict
+- Confidence breakdown (phishing probability, safe probability, risk meter)
+- Safety tips shown when a phishing email is detected
+
+---
+
 ## 🚀 Usage
 
 ### Train the Model
@@ -258,7 +273,7 @@ Through this project, I learned:
 - Email URL analysis
 - Attachment scanning
 - Real-time email monitoring
-- Web interface using Flask or Streamlit
+- ~~Web interface using Flask or Streamlit~~ ✅ Done — `app.py`
 - Email header analysis
 - API deployment
 
