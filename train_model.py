@@ -1,186 +1,200 @@
-import os
 import joblib
-import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
-
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-
 from sklearn.metrics import (
     accuracy_score,
+    f1_score,
+    roc_auc_score,
     classification_report,
     confusion_matrix,
-    ConfusionMatrixDisplay
+    ConfusionMatrixDisplay,
 )
 
-# ======================================
-# Load Dataset
-# ======================================
-
-df = pd.read_csv("dataset/Phishing_Email.csv")
-
-print("Dataset Loaded Successfully!\n")
-
-# ======================================
-# Data Cleaning
-# ======================================
-
-df.drop(columns=["Unnamed: 0"], inplace=True)
-
-df.columns = ["email", "label"]
-
-df.dropna(inplace=True)
-
-df.drop_duplicates(inplace=True)
-
-df["label"] = df["label"].map({
-    "Safe Email": 0,
-    "Phishing Email": 1
-})
-
-print("Data Cleaning Completed!\n")
-
-# ======================================
-# Features & Labels
-# ======================================
-
-X = df["email"]
-y = df["label"]
-
-# ======================================
-# TF-IDF Vectorization
-# ======================================
-
-vectorizer = TfidfVectorizer(
-    stop_words="english",
-    max_features=5000
+from utils.paths import (
+    MODEL_DIR,
+    MODEL_PATH,
+    VECTORIZER_PATH,
+    SCREENSHOTS_DIR,
+    CONFUSION_MATRIX_PATH,
+    MODEL_COMPARISON_PATH,
 )
+from utils.data_loader import load_and_clean_dataset
 
-X = vectorizer.fit_transform(X)
 
-print("TF-IDF Vectorization Completed!")
-print("Feature Matrix Shape:", X.shape)
+def main():
+    # ======================================
+    # Load & Clean Dataset
+    # ======================================
 
-# ======================================
-# Train Test Split
-# ======================================
+    print("Loading dataset…")
+    df = load_and_clean_dataset()
+    print(f"Dataset Loaded Successfully!  ({len(df):,} rows)\n")
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42
-)
+    # ======================================
+    # Features & Labels
+    # ======================================
 
-print("\nTraining Samples:", X_train.shape[0])
-print("Testing Samples :", X_test.shape[0])
+    X = df["email"]
+    y = df["label"]
 
-# ======================================
-# Machine Learning Models
-# ======================================
+    # ======================================
+    # TF-IDF Vectorization
+    # ======================================
 
-models = {
-    "Multinomial Naive Bayes": MultinomialNB(),
-    "Logistic Regression": LogisticRegression(max_iter=1000),
-    "Random Forest": RandomForestClassifier(
-        n_estimators=100,
-        random_state=42
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        max_features=10000,     # More features for better coverage
+        ngram_range=(1, 2),     # Unigrams + bigrams (e.g. "click here", "verify account")
+        sublinear_tf=True       # Log-scale TF to reduce impact of very frequent terms
     )
-}
 
-best_model = None
-best_accuracy = 0
+    X = vectorizer.fit_transform(X)
 
-accuracies = {}
+    print("TF-IDF Vectorization Completed!")
+    print("Feature Matrix Shape:", X.shape)
 
-print("\n========== MODEL EVALUATION ==========\n")
+    # ======================================
+    # Train / Test Split
+    # ======================================
 
-for name, model in models.items():
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y              # Preserve class ratio in both splits
+    )
 
-    print("=" * 60)
-    print(f"Training: {name}")
+    print(f"\nTraining Samples : {X_train.shape[0]:,}")
+    print(f"Testing  Samples : {X_test.shape[0]:,}")
 
-    model.fit(X_train, y_train)
+    # ======================================
+    # Machine Learning Models
+    # ======================================
 
-    y_pred = model.predict(X_test)
+    models = {
+        "Multinomial Naive Bayes": MultinomialNB(),
+        "Logistic Regression":     LogisticRegression(max_iter=1000),
+        "Random Forest":           RandomForestClassifier(n_estimators=100, random_state=42),
+    }
 
-    accuracy = accuracy_score(y_test, y_pred)
+    best_model = None
+    best_f1    = 0
 
-    accuracies[name] = accuracy
+    accuracies = {}
+    f1_scores  = {}
 
-    print(f"Accuracy : {accuracy:.4f}")
+    # 5-fold stratified CV — stable estimates regardless of how the data was split
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-    print("\nClassification Report:\n")
-    print(classification_report(y_test, y_pred))
+    print("\n========== MODEL EVALUATION ==========\n")
 
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    for name, model in models.items():
 
-    if accuracy > best_accuracy:
-        best_accuracy = accuracy
-        best_model = model
+        print("=" * 60)
+        print(f"Training: {name}")
 
-print("\n" + "=" * 60)
-print(f"Best Model : {best_model.__class__.__name__}")
-print(f"Best Accuracy : {best_accuracy:.4f}")
+        # ── Cross-Validation (on full data, before the hold-out test) ─────────
+        cv_f1 = cross_val_score(model, X, y, cv=cv, scoring="f1_weighted", n_jobs=-1)
+        print(f"CV F1 (5-fold) : {cv_f1.mean():.4f} ± {cv_f1.std():.4f}")
 
-# ======================================
-# Save Best Model
-# ======================================
+        # ── Hold-out Evaluation ───────────────────────────────────────────────
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
 
-os.makedirs("model", exist_ok=True)
-os.makedirs("screenshots", exist_ok=True)
+        accuracy = accuracy_score(y_test, y_pred)
+        f1       = f1_score(y_test, y_pred, average="weighted")
+        auc      = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
 
-joblib.dump(best_model, "model/phishing_model.pkl")
-joblib.dump(vectorizer, "model/tfidf_vectorizer.pkl")
+        accuracies[name] = accuracy
+        f1_scores[name]  = f1
 
-print("\nModel and Vectorizer saved successfully!")
+        print(f"Accuracy       : {accuracy:.4f}")
+        print(f"F1 (weighted)  : {f1:.4f}")
+        print(f"ROC-AUC        : {auc:.4f}")
 
-# ======================================
-# Confusion Matrix
-# ======================================
+        print("\nClassification Report:\n")
+        print(classification_report(y_test, y_pred))
 
-y_pred = best_model.predict(X_test)
+        print("Confusion Matrix:")
+        print(confusion_matrix(y_test, y_pred))
 
-disp = ConfusionMatrixDisplay.from_predictions(
-    y_test,
-    y_pred,
-    display_labels=["Safe", "Phishing"],
-    cmap="Blues"
-)
+        # Select best model by F1 — robust against class imbalance
+        if f1 > best_f1:
+            best_f1    = f1
+            best_model = model
 
-plt.title("Confusion Matrix")
+    print("\n" + "=" * 60)
+    print(f"Best Model     : {best_model.__class__.__name__}")
+    print(f"Best F1 Score  : {best_f1:.4f}")
 
-plt.savefig("screenshots/confusion_matrix.png")
+    # ======================================
+    # Save Best Model
+    # ======================================
 
-plt.show()
+    MODEL_DIR.mkdir(exist_ok=True)
+    SCREENSHOTS_DIR.mkdir(exist_ok=True)
 
-# ======================================
-# Model Accuracy Comparison
-# ======================================
+    joblib.dump(best_model, MODEL_PATH)
+    joblib.dump(vectorizer, VECTORIZER_PATH)
 
-plt.figure(figsize=(8,5))
+    print("\nModel and Vectorizer saved successfully!")
 
-plt.bar(
-    accuracies.keys(),
-    accuracies.values()
-)
+    # ======================================
+    # Confusion Matrix Plot
+    # ======================================
 
-plt.title("Model Accuracy Comparison")
-plt.xlabel("Models")
-plt.ylabel("Accuracy")
+    y_pred = best_model.predict(X_test)
 
-plt.ylim(0.90, 1.00)
+    disp = ConfusionMatrixDisplay.from_predictions(
+        y_test,
+        y_pred,
+        display_labels=["Safe", "Phishing"],
+        cmap="Blues",
+    )
 
-for i, value in enumerate(accuracies.values()):
-    plt.text(i, value + 0.002, f"{value:.4f}", ha="center")
+    plt.title("Confusion Matrix")
+    plt.savefig(CONFUSION_MATRIX_PATH)
+    plt.show()
 
-plt.tight_layout()
+    # ======================================
+    # Model Performance Comparison (F1 + Accuracy)
+    # ======================================
 
-plt.savefig("screenshots/model_comparison.png")
+    x      = range(len(f1_scores))
+    width  = 0.35
+    labels = list(f1_scores.keys())
 
-plt.show()
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    bars_f1  = ax.bar([i - width / 2 for i in x], f1_scores.values(),  width, label="F1 Score", color="steelblue")
+    bars_acc = ax.bar([i + width / 2 for i in x], accuracies.values(), width, label="Accuracy",  color="lightcoral")
+
+    ax.set_title("Model Performance Comparison (F1 vs Accuracy)")
+    ax.set_xlabel("Models")
+    ax.set_ylabel("Score")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0.90, 1.00)
+    ax.legend()
+
+    for bar in bars_f1:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.001,
+                f"{bar.get_height():.4f}", ha="center", va="bottom", fontsize=8)
+
+    for bar in bars_acc:
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.001,
+                f"{bar.get_height():.4f}", ha="center", va="bottom", fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig(MODEL_COMPARISON_PATH)
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()

@@ -54,7 +54,13 @@ Phishing-Email-Detection/
 │   ├── confusion_matrix.png
 │   └── model_comparison.png
 │
+├── utils/                    ← shared utilities
+│   ├── __init__.py
+│   ├── paths.py              ← central path configuration
+│   └── data_loader.py        ← shared data loading & cleaning
+│
 ├── train_model.py
+├── test_model.py
 ├── phishing_detector.py
 ├── requirements.txt
 ├── README.md
@@ -137,19 +143,26 @@ python phishing_detector.py
 Example:
 
 ```
-Enter Email Text:
+============================================================
+       🛡️  Phishing Email Detector
+============================================================
+
+Paste the email text below.
+When done, press Enter on a blank line:
 
 Congratulations!
-
 You have won $10,000.
-
 Click here to claim your reward.
+
 ```
 
 Output
 
 ```
-⚠️ Prediction: Phishing Email
+============================================================
+🚨 Result     : Phishing Email
+📊 Confidence : 98.47%
+============================================================
 ```
 
 ---
@@ -198,10 +211,6 @@ Example Confusion Matrix
 ```
 
 ---
-
-## 📸 Results
-
-### Model Accuracy Comparison
 
 ## 📸 Results
 

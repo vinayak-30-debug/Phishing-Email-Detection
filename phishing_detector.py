@@ -1,16 +1,66 @@
+import sys
 import joblib
 
-model = joblib.load("model/phishing_model.pkl")
-vectorizer = joblib.load("model/tfidf_vectorizer.pkl")
+from utils.paths import MODEL_PATH, VECTORIZER_PATH
 
-with open("test_email.txt", "r", encoding="utf-8") as f:
-    email = f.read()
 
-email_vector = vectorizer.transform([email])
+def main():
+    # ======================================
+    # Load Model & Vectorizer
+    # ======================================
 
-prediction = model.predict(email_vector)
+    try:
+        model      = joblib.load(MODEL_PATH)
+        vectorizer = joblib.load(VECTORIZER_PATH)
+    except FileNotFoundError:
+        print("❌ Model files not found.")
+        print("   Please run 'python train_model.py' first to train the model.")
+        sys.exit(1)
 
-if prediction[0] == 1:
-    print("⚠️ Phishing Email")
-else:
-    print("✅ Safe Email")
+    # ======================================
+    # Get Email Input from User
+    # ======================================
+
+    print("=" * 60)
+    print("       🛡️  Phishing Email Detector")
+    print("=" * 60)
+    print("\nPaste the email text below.")
+    print("When done, press Enter on a blank line:\n")
+
+    lines = []
+    while True:
+        try:
+            line = input()
+        except EOFError:
+            break
+        if line == "":
+            break
+        lines.append(line)
+
+    email = "\n".join(lines).strip()
+
+    if not email:
+        print("\n⚠️  No email text provided. Exiting.")
+        sys.exit(1)
+
+    # ======================================
+    # Predict
+    # ======================================
+
+    email_vector = vectorizer.transform([email])
+    prediction   = model.predict(email_vector)[0]
+    confidence   = max(model.predict_proba(email_vector)[0]) * 100
+
+    print("\n" + "=" * 60)
+
+    if prediction == 1:
+        print("🚨 Result     : Phishing Email")
+    else:
+        print("✅ Result     : Safe Email")
+
+    print(f"📊 Confidence : {confidence:.2f}%")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()
