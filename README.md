@@ -6,6 +6,27 @@ The project was developed as part of the **Thiranex Cybersecurity Internship** t
 
 ---
 
+## 📑 Table of Contents
+
+- [📌 Features](#-features)
+- [🛠️ Technologies Used](#️-technologies-used)
+- [📂 Project Structure](#-project-structure)
+- [⚙️ Installation](#️-installation)
+- [📁 Dataset](#-dataset)
+- [🌐 Web Interface](#-web-interface)
+- [🚀 Usage](#-usage)
+- [📊 Machine Learning Models Compared](#-machine-learning-models-compared)
+- [📈 Model Performance](#-model-performance)
+- [📸 Results](#-results)
+- [📚 Concepts Used](#-concepts-used)
+- [🎯 Learning Outcomes](#-learning-outcomes)
+- [🚀 Future Enhancements](#-future-enhancements)
+- [⚠️ Disclaimer](#️-disclaimer)
+- [👨‍💻 Author](#-author)
+- [⭐ Support](#-support)
+
+---
+
 ## 📌 Features
 
 - 📧 Detects whether an email is **Safe** or **Phishing**
