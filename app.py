@@ -17,7 +17,6 @@ from utils.paths import MODEL_PATH, VECTORIZER_PATH
 st.set_page_config(
     page_title="Phishing Email Detector",
     page_icon="🛡️",
-    layout="centered",
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
