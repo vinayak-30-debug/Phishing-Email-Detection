@@ -291,7 +291,7 @@ Through this project, I learned:
 ## 🚀 Future Enhancements
 
 - Deep Learning (LSTM/BERT)
-- Email URL analysis
+- ~~Email URL analysis~~ ✅ Done — `utils/url_analyzer.py`
 - Attachment scanning
 - Real-time email monitoring
 - ~~Web interface using Flask or Streamlit~~ ✅ Done — `app.py`

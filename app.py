@@ -11,6 +11,7 @@ import joblib
 import streamlit as st
 
 from utils.paths import MODEL_PATH, VECTORIZER_PATH
+from utils.url_analyzer import extract_urls, analyse_urls, overall_threat_level
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Page config  (must be first Streamlit call)
@@ -182,6 +183,159 @@ html, body, [class*="css"] {
     border-radius: 50%;
     margin-right: 0.3rem;
     vertical-align: middle;
+}
+
+/* ── URL Analysis ── */
+.url-section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-bottom: 0.3rem;
+}
+.url-section-sub {
+    color: #94a3b8;
+    font-size: 0.88rem;
+    margin-top: -0.3rem;
+    margin-bottom: 1rem;
+}
+.url-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.7rem;
+    transition: border-color 0.2s ease;
+}
+.url-card:hover {
+    border-color: rgba(255,255,255,0.2);
+}
+.url-hostname {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    word-break: break-all;
+}
+.url-full {
+    font-size: 0.78rem;
+    color: #64748b;
+    word-break: break-all;
+    margin-top: 0.2rem;
+}
+.url-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.55rem;
+}
+.url-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 500;
+}
+.url-flag-1 {
+    background: rgba(250,204,21,0.12);
+    color: #fde68a;
+    border: 1px solid rgba(250,204,21,0.25);
+}
+.url-flag-2 {
+    background: rgba(251,146,60,0.12);
+    color: #fdba74;
+    border: 1px solid rgba(251,146,60,0.25);
+}
+.url-flag-3 {
+    background: rgba(239,68,68,0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.30);
+}
+.risk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.risk-low {
+    background: rgba(34,197,94,0.15);
+    color: #86efac;
+    border: 1px solid rgba(34,197,94,0.3);
+}
+.risk-medium {
+    background: rgba(250,204,21,0.15);
+    color: #fde68a;
+    border: 1px solid rgba(250,204,21,0.3);
+}
+.risk-high {
+    background: rgba(251,146,60,0.15);
+    color: #fdba74;
+    border: 1px solid rgba(251,146,60,0.3);
+}
+.risk-critical {
+    background: rgba(239,68,68,0.18);
+    color: #fca5a5;
+    border: 1px solid rgba(239,68,68,0.35);
+}
+.url-score-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+.url-score-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+}
+.url-no-flags {
+    color: #86efac;
+    font-size: 0.82rem;
+    margin-top: 0.4rem;
+}
+.url-overall-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.2rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+.url-overall-none {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25);
+}
+.url-overall-low {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25);
+}
+.url-overall-medium {
+    background: rgba(250,204,21,0.1);
+    border: 1px solid rgba(250,204,21,0.25);
+}
+.url-overall-high {
+    background: rgba(251,146,60,0.12);
+    border: 1px solid rgba(251,146,60,0.25);
+}
+.url-overall-critical {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+}
+.url-overall-text {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+.url-overall-count {
+    font-size: 0.82rem;
+    color: #94a3b8;
 }
 
 /* ── Divider ── */
@@ -396,6 +550,87 @@ if analyse:
             )
         else:
             st.info("No keyword data available for this email.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # ── URL Analysis ───────────────────────────────────────────────────
+        urls = extract_urls(email_text)
+
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("#### 🔗 URL Analysis")
+
+        if urls:
+            analysis = analyse_urls(urls)
+            threat = overall_threat_level(analysis)
+
+            # Threat-level emoji mapping
+            _threat_emoji = {
+                "none": "✅", "low": "✅", "medium": "⚠️",
+                "high": "🔶", "critical": "🚨",
+            }
+            _threat_desc = {
+                "none": "No suspicious URLs detected",
+                "low": "URLs appear mostly safe",
+                "medium": "Some URLs show minor risk signals",
+                "high": "One or more URLs are suspicious",
+                "critical": "High-risk URLs detected — likely phishing",
+            }
+
+            st.markdown(
+                f'<div class="url-overall-banner url-overall-{threat}">'
+                f'<span class="url-overall-text">{_threat_emoji[threat]} {_threat_desc[threat]}</span>'
+                f'<span class="url-overall-count">{len(urls)} URL{"s" if len(urls) != 1 else ""} found</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Score-bar colour helper
+            def _bar_color(score: int) -> str:
+                if score >= 80:
+                    return "linear-gradient(90deg, #f87171, #ef4444)"
+                if score >= 50:
+                    return "linear-gradient(90deg, #fb923c, #f97316)"
+                if score >= 25:
+                    return "linear-gradient(90deg, #facc15, #eab308)"
+                return "linear-gradient(90deg, #4ade80, #22c55e)"
+
+            for r in analysis:
+                flags_html = ""
+                if r["flags"]:
+                    flags_html = '<div class="url-flags">'
+                    for f in r["flags"]:
+                        w = f["weight"]
+                        flags_html += (
+                            f'<span class="url-flag url-flag-{w}">'
+                            f'{"⚠" if w <= 1 else "🔶" if w == 2 else "🚨"} '
+                            f'{f["label"]}</span>'
+                        )
+                    flags_html += '</div>'
+                else:
+                    flags_html = '<p class="url-no-flags">✓ No suspicious signals</p>'
+
+                bar_bg = _bar_color(r["risk_score"])
+
+                st.markdown(
+                    f'<div class="url-card">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center">'
+                    f'<span class="url-hostname">{r["hostname"]}</span>'
+                    f'<span class="risk-badge risk-{r["risk_level"]}">{r["risk_level"]}</span>'
+                    f'</div>'
+                    f'<p class="url-full">{r["url"]}</p>'
+                    f'{flags_html}'
+                    f'<div class="url-score-bar-bg">'
+                    f'<div class="url-score-bar" style="width:{r["risk_score"]}%;background:{bar_bg}"></div>'
+                    f'</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.markdown(
+                '<p style="color:#94a3b8;font-size:0.9rem">'
+                '📭 No URLs found in this email.</p>',
+                unsafe_allow_html=True,
+            )
 
         st.markdown('</div>', unsafe_allow_html=True)
 
